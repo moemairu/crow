@@ -13,8 +13,10 @@ struct _CrowWindow {
     GtkWidget   *header_bar;
     GtkWidget   *settings_btn;
     GtkWidget   *refresh_btn;
+    GtkWidget   *stack;
     GtkWidget   *scrolled_window;
     GtkWidget   *list_view;
+    GtkWidget   *empty_box;
 
     /* Data */
     GListStore  *mod_store;
@@ -160,13 +162,44 @@ static void crow_window_init(CrowWindow *self) {
     g_signal_connect(self->refresh_btn, "clicked",
                      G_CALLBACK(on_refresh_clicked), self);
 
-    /* --- Main content --- */
+    /* --- Main content: Stack with list view + empty state --- */
+    self->stack = gtk_stack_new();
+    gtk_stack_set_transition_type(GTK_STACK(self->stack),
+                                  GTK_STACK_TRANSITION_TYPE_CROSSFADE);
+    gtk_widget_set_vexpand(self->stack, TRUE);
+    gtk_widget_set_hexpand(self->stack, TRUE);
+    gtk_window_set_child(GTK_WINDOW(self), self->stack);
+
+    /* Scrolled window for the list */
     self->scrolled_window = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->scrolled_window),
                                    GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_widget_set_vexpand(self->scrolled_window, TRUE);
-    gtk_widget_set_hexpand(self->scrolled_window, TRUE);
-    gtk_window_set_child(GTK_WINDOW(self), self->scrolled_window);
+    gtk_stack_add_named(GTK_STACK(self->stack), self->scrolled_window, "list");
+
+    /* Empty state */
+    self->empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    gtk_widget_set_halign(self->empty_box, GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(self->empty_box, GTK_ALIGN_CENTER);
+
+    GtkWidget *empty_icon = gtk_image_new_from_icon_name("folder-symbolic");
+    gtk_image_set_pixel_size(GTK_IMAGE(empty_icon), 64);
+    gtk_widget_add_css_class(empty_icon, "dim-label");
+    gtk_box_append(GTK_BOX(self->empty_box), empty_icon);
+
+    GtkWidget *empty_title = gtk_label_new("No Mods Found");
+    gtk_widget_add_css_class(empty_title, "title-2");
+    gtk_widget_add_css_class(empty_title, "dim-label");
+    gtk_box_append(GTK_BOX(self->empty_box), empty_title);
+
+    GtkWidget *empty_sub = gtk_label_new(
+        "Set your GGST directory or place .pak files in the ~mods folder");
+    gtk_widget_add_css_class(empty_sub, "dim-label");
+    gtk_box_append(GTK_BOX(self->empty_box), empty_sub);
+
+    gtk_stack_add_named(GTK_STACK(self->stack), self->empty_box, "empty");
+
+    /* Show empty state by default */
+    gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
 
     /* Initialize store and list view */
     self->mod_store = g_list_store_new(CROW_TYPE_MOD);
@@ -183,8 +216,25 @@ static void crow_window_init(CrowWindow *self) {
 
     self->list_view = gtk_list_view_new(GTK_SELECTION_MODEL(selection_model),
                                         factory);
+    gtk_widget_add_css_class(self->list_view, "crow-list");
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(self->scrolled_window),
                                   self->list_view);
+
+    /* --- CSS --- */
+    GtkCssProvider *css = gtk_css_provider_new();
+    gtk_css_provider_load_from_string(css,
+        "listview.crow-list row { "
+        "  border-bottom: 1px solid alpha(currentColor, 0.1); "
+        "} "
+        "listview.crow-list row:last-child { "
+        "  border-bottom: none; "
+        "} "
+    );
+    gtk_style_context_add_provider_for_display(
+        gdk_display_get_default(),
+        GTK_STYLE_PROVIDER(css),
+        GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    g_object_unref(css);
 
     /* Window defaults */
     gtk_window_set_default_size(GTK_WINDOW(self), 800, 500);
@@ -255,10 +305,16 @@ static void on_refresh_clicked(GtkButton *button, gpointer user_data) {
 /* ---------- Mod refresh ---------- */
 
 static void crow_window_refresh_mods(CrowWindow *self) {
-    if (!self->ggst_path) return;
+    if (!self->ggst_path) {
+        gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
+        return;
+    }
 
     GListStore *new_store = crow_mod_scan_directory(self->ggst_path);
-    if (!new_store) return;
+    if (!new_store) {
+        gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
+        return;
+    }
 
     /* Replace old store contents */
     g_list_store_remove_all(self->mod_store);
@@ -271,6 +327,13 @@ static void crow_window_refresh_mods(CrowWindow *self) {
     }
 
     g_object_unref(new_store);
+
+    /* Toggle between list view and empty state */
+    if (n > 0) {
+        gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "list");
+    } else {
+        gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
+    }
 
     g_print("crow: loaded %u mod(s)\n", n);
 }
