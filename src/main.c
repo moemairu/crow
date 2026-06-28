@@ -1,7 +1,17 @@
 #include <gtk/gtk.h>
+#include "config.h"
 
 static void on_activate(GtkApplication *app, gpointer user_data) {
     (void)user_data;
+
+    /* Test config load */
+    gchar *ggst_path = crow_config_load();
+    if (ggst_path) {
+        g_print("crow: loaded GGST path: %s\n", ggst_path);
+        g_free(ggst_path);
+    } else {
+        g_print("crow: no GGST path configured\n");
+    }
 
     GtkWidget *window = gtk_application_window_new(app);
     gtk_window_set_title(GTK_WINDOW(window), "Crow");
