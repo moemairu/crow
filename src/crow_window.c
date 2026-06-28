@@ -31,6 +31,54 @@ static void on_refresh_clicked(GtkButton *button, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
 
+/* ---------- ListView Factory Callbacks ---------- */
+
+static void factory_setup(GtkSignalListItemFactory *factory,
+                          GtkListItem *list_item, gpointer user_data) {
+    (void)factory;
+    (void)user_data;
+
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_widget_set_margin_start(box, 12);
+    gtk_widget_set_margin_end(box, 12);
+    gtk_widget_set_margin_top(box, 8);
+    gtk_widget_set_margin_bottom(box, 8);
+
+    GtkWidget *label = gtk_label_new("");
+    gtk_label_set_xalign(GTK_LABEL(label), 0.0f);
+    gtk_widget_set_hexpand(label, TRUE);
+    gtk_box_append(GTK_BOX(box), label);
+
+    GtkWidget *sw = gtk_switch_new();
+    gtk_widget_set_valign(sw, GTK_ALIGN_CENTER);
+    gtk_box_append(GTK_BOX(box), sw);
+
+    gtk_list_item_set_child(list_item, box);
+}
+
+static void factory_bind(GtkSignalListItemFactory *factory,
+                         GtkListItem *list_item, gpointer user_data) {
+    (void)factory;
+    (void)user_data;
+
+    GtkWidget *box = gtk_list_item_get_child(list_item);
+    GtkWidget *label = gtk_widget_get_first_child(box);
+    GtkWidget *sw = gtk_widget_get_last_child(box);
+
+    CrowMod *mod = gtk_list_item_get_item(list_item);
+
+    gtk_label_set_text(GTK_LABEL(label), crow_mod_get_name(mod));
+    gtk_switch_set_active(GTK_SWITCH(sw), crow_mod_get_enabled(mod));
+}
+
+static void factory_unbind(GtkSignalListItemFactory *factory,
+                           GtkListItem *list_item, gpointer user_data) {
+    (void)factory;
+    (void)list_item;
+    (void)user_data;
+    /* Signal disconnection will be added in Phase 7 */
+}
+
 /* ---------- GObject lifecycle ---------- */
 
 static void crow_window_finalize(GObject *object) {
@@ -80,9 +128,23 @@ static void crow_window_init(CrowWindow *self) {
     gtk_widget_set_hexpand(self->scrolled_window, TRUE);
     gtk_window_set_child(GTK_WINDOW(self), self->scrolled_window);
 
-    /* Initialize store (empty for now — populated after config check) */
+    /* Initialize store and list view */
     self->mod_store = g_list_store_new(CROW_TYPE_MOD);
     self->ggst_path = NULL;
+
+    /* --- List View with factory --- */
+    GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
+    g_signal_connect(factory, "setup", G_CALLBACK(factory_setup), NULL);
+    g_signal_connect(factory, "bind", G_CALLBACK(factory_bind), NULL);
+    g_signal_connect(factory, "unbind", G_CALLBACK(factory_unbind), NULL);
+
+    GtkNoSelection *selection_model =
+        gtk_no_selection_new(G_LIST_MODEL(g_object_ref(self->mod_store)));
+
+    self->list_view = gtk_list_view_new(GTK_SELECTION_MODEL(selection_model),
+                                        factory);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(self->scrolled_window),
+                                  self->list_view);
 
     /* Window defaults */
     gtk_window_set_default_size(GTK_WINDOW(self), 800, 500);
