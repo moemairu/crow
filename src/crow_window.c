@@ -170,11 +170,42 @@ static void crow_window_init(CrowWindow *self) {
     gtk_widget_set_hexpand(self->stack, TRUE);
     gtk_window_set_child(GTK_WINDOW(self), self->stack);
 
+    /* List page: header row + scrolled list */
+    GtkWidget *list_page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+
+    /* Column header row */
+    GtkWidget *header_row = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_widget_set_margin_start(header_row, 12);
+    gtk_widget_set_margin_end(header_row, 12);
+    gtk_widget_set_margin_top(header_row, 8);
+    gtk_widget_set_margin_bottom(header_row, 4);
+
+    GtkWidget *name_header = gtk_label_new("Mod Name");
+    gtk_widget_add_css_class(name_header, "dim-label");
+    gtk_widget_add_css_class(name_header, "caption");
+    gtk_label_set_xalign(GTK_LABEL(name_header), 0.0f);
+    gtk_widget_set_hexpand(name_header, TRUE);
+    gtk_box_append(GTK_BOX(header_row), name_header);
+
+    GtkWidget *status_header = gtk_label_new("Status");
+    gtk_widget_add_css_class(status_header, "dim-label");
+    gtk_widget_add_css_class(status_header, "caption");
+    gtk_box_append(GTK_BOX(header_row), status_header);
+
+    gtk_box_append(GTK_BOX(list_page), header_row);
+
+    /* Separator under header */
+    GtkWidget *sep = gtk_separator_new(GTK_ORIENTATION_HORIZONTAL);
+    gtk_box_append(GTK_BOX(list_page), sep);
+
     /* Scrolled window for the list */
     self->scrolled_window = gtk_scrolled_window_new();
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->scrolled_window),
                                    GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_stack_add_named(GTK_STACK(self->stack), self->scrolled_window, "list");
+    gtk_widget_set_vexpand(self->scrolled_window, TRUE);
+    gtk_box_append(GTK_BOX(list_page), self->scrolled_window);
+
+    gtk_stack_add_named(GTK_STACK(self->stack), list_page, "list");
 
     /* Empty state */
     self->empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);

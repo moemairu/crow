@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🪶 Crow
+# 🐦‍⬛ Crow
 
 ### *Your mods. One switch away.*
 
@@ -46,7 +46,7 @@ Point it at your GGST install, and it gives you a clean list of switches to flip
 git clone https://github.com/moemairu/crow.git
 cd crow && cmake -B build && cmake --build build
 
-# Fly 🪶
+# Fly 🐦‍⬛
 ./build/crow
 ```
 
@@ -116,7 +116,7 @@ Install them on common Linux distributions:
 ```bash
 cmake -B build            # Configure
 cmake --build build       # Build
-./build/crow              # Run 🪶
+./build/crow              # Run 🐦‍⬛
 ```
 
 ---
@@ -170,7 +170,7 @@ crow/
 
 ## 📜 License
 
-MIT — do whatever you want. Just keep fighting. 🪶
+MIT — do whatever you want. Just keep fighting. 🐦‍⬛
 
 ---
 
@@ -178,6 +178,6 @@ MIT — do whatever you want. Just keep fighting. 🪶
 
 *Crow does one job well: flipping your Strive mods on and off.*
 
-**Toggle mods, not your sanity.** 🪶🎮
+**Toggle mods, not your sanity.** 🐦‍⬛🎮
 
 </div>
