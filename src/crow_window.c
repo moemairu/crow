@@ -31,6 +31,29 @@ static void on_refresh_clicked(GtkButton *button, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
 
+/* ---------- Switch toggle handler ---------- */
+
+static void on_switch_toggled(GtkSwitch *sw, GParamSpec *pspec,
+                              gpointer user_data) {
+    (void)pspec;
+    CrowMod *mod = CROW_MOD(user_data);
+    gboolean desired = gtk_switch_get_active(sw);
+
+    if (desired == crow_mod_get_enabled(mod)) return; /* no change */
+
+    if (!crow_mod_set_enabled(mod, desired)) {
+        /* Rename failed — revert the switch without re-triggering */
+        gulong handler_id = GPOINTER_TO_UINT(
+            g_object_get_data(G_OBJECT(sw), "toggle-handler-id"));
+        g_signal_handler_block(sw, handler_id);
+        gtk_switch_set_active(sw, crow_mod_get_enabled(mod));
+        g_signal_handler_unblock(sw, handler_id);
+
+        fprintf(stderr, "crow: failed to toggle mod: %s\n",
+                crow_mod_get_name(mod));
+    }
+}
+
 /* ---------- ListView Factory Callbacks ---------- */
 
 static void factory_setup(GtkSignalListItemFactory *factory,
@@ -68,15 +91,32 @@ static void factory_bind(GtkSignalListItemFactory *factory,
     CrowMod *mod = gtk_list_item_get_item(list_item);
 
     gtk_label_set_text(GTK_LABEL(label), crow_mod_get_name(mod));
+
+    /* Block signal before setting initial state to avoid triggering toggle */
+    gulong handler_id = g_signal_connect(sw, "notify::active",
+                                         G_CALLBACK(on_switch_toggled), mod);
+    g_object_set_data(G_OBJECT(sw), "toggle-handler-id",
+                      GUINT_TO_POINTER(handler_id));
+
+    g_signal_handler_block(sw, handler_id);
     gtk_switch_set_active(GTK_SWITCH(sw), crow_mod_get_enabled(mod));
+    g_signal_handler_unblock(sw, handler_id);
 }
 
 static void factory_unbind(GtkSignalListItemFactory *factory,
                            GtkListItem *list_item, gpointer user_data) {
     (void)factory;
-    (void)list_item;
     (void)user_data;
-    /* Signal disconnection will be added in Phase 7 */
+
+    GtkWidget *box = gtk_list_item_get_child(list_item);
+    GtkWidget *sw = gtk_widget_get_last_child(box);
+
+    gulong handler_id = GPOINTER_TO_UINT(
+        g_object_get_data(G_OBJECT(sw), "toggle-handler-id"));
+    if (handler_id > 0) {
+        g_signal_handler_disconnect(sw, handler_id);
+        g_object_set_data(G_OBJECT(sw), "toggle-handler-id", NULL);
+    }
 }
 
 /* ---------- GObject lifecycle ---------- */
