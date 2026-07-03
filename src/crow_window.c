@@ -296,7 +296,6 @@ static void crow_window_init(CrowWindow *self) {
                                   GTK_STACK_TRANSITION_TYPE_CROSSFADE);
     gtk_widget_set_vexpand(self->stack, TRUE);
     gtk_widget_set_hexpand(self->stack, TRUE);
-    gtk_window_set_child(GTK_WINDOW(self), self->stack);
 
     /* List page: header row + scrolled list */
     GtkWidget *list_page = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
