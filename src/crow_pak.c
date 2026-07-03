@@ -38,7 +38,7 @@ static const gchar *crow_pak_map_character(const char *code) {
     if (strncmp(code, "GLD", 3) == 0) return "Goldlewis Dickinson";
     if (strncmp(code, "BKN", 3) == 0) return "Baiken";
     if (strncmp(code, "TST", 3) == 0) return "Testament";
-    if (strncmp(code, "BRG", 3) == 0) return "Bridget";
+    if (strncmp(code, "BGT", 3) == 0) return "Bridget";
     if (strncmp(code, "SIN", 3) == 0) return "Sin Kiske";
     if (strncmp(code, "BED", 3) == 0) return "Bedman?";
     if (strncmp(code, "ASK", 3) == 0) return "Asuka R#";
@@ -48,6 +48,7 @@ static const gchar *crow_pak_map_character(const char *code) {
     if (strncmp(code, "SLY", 3) == 0) return "Slayer";
     if (strncmp(code, "UZK", 3) == 0) return "Unika";
     if (strncmp(code, "LUC", 3) == 0) return "Lucy";
+    if (strncmp(code, "USG", 3) == 0) return "Jam Kuradoberi";
     return NULL;
 }
 
@@ -122,16 +123,11 @@ gchar *crow_pak_detect_character(const gchar *pak_path) {
     }
     fclose(f);
 
-    /* Search for character paths */
-    const char *target = "RED/Content/Chara/";
+    /* Search for character paths using shorter string since root path varies */
+    const char *target = "Chara/";
     size_t target_len = strlen(target);
     const gchar *detected_char = NULL;
 
-    /* A simple binary scan (memmem is GNU extension, we'll write a simple loop to be portable, 
-       or use glib's g_strstr_len if applicable. g_strstr_len expects null-terminated or len. ) 
-       Wait, index_buffer is binary data, but strings are UTF-8 or ASCII without nulls sometimes or prefixed by length.
-       We can just scan byte by byte.
-    */
     for (size_t i = 0; i <= index_size - target_len - 3; i++) {
         if (memcmp(&index_buffer[i], target, target_len) == 0) {
             char code[4] = {0};
@@ -154,46 +150,4 @@ gchar *crow_pak_detect_character(const gchar *pak_path) {
     }
 
     return g_strdup("Unknown / Other");
-}
-
-gchar *crow_pak_guess_from_name(const gchar *name) {
-    if (!name) return g_strdup("Unknown / Other");
-    
-    gchar *lower = g_utf8_strdown(name, -1);
-    gchar *result = NULL;
-
-    if (strstr(lower, "sol") || strstr(lower, "badguy")) result = "Sol Badguy";
-    else if (strstr(lower, "ky") || strstr(lower, "kiske")) result = "Ky Kiske";
-    else if (strstr(lower, "may")) result = "May";
-    else if (strstr(lower, "axl") || strstr(lower, "low")) result = "Axl Low";
-    else if (strstr(lower, "chipp") || strstr(lower, "zanuff")) result = "Chipp Zanuff";
-    else if (strstr(lower, "pot") || strstr(lower, "potemkin")) result = "Potemkin";
-    else if (strstr(lower, "faust")) result = "Faust";
-    else if (strstr(lower, "millia") || strstr(lower, "mli")) result = "Millia Rage";
-    else if (strstr(lower, "zato") || strstr(lower, "jotaro")) result = "Zato-1"; /* User specific case JoTaro01 */
-    else if (strstr(lower, "ram") || strstr(lower, "ramlethal")) result = "Ramlethal Valentine";
-    else if (strstr(lower, "leo") || strstr(lower, "whitefang")) result = "Leo Whitefang";
-    else if (strstr(lower, "nago") || strstr(lower, "nagoriyuki")) result = "Nagoriyuki";
-    else if (strstr(lower, "gio") || strstr(lower, "giovanna")) result = "Giovanna";
-    else if (strstr(lower, "ino") || strstr(lower, "i-no")) result = "I-No";
-    else if (strstr(lower, "anji") || strstr(lower, "mito")) result = "Anji Mito";
-    else if (strstr(lower, "jack") || strstr(lower, "jacko")) result = "Jack-O'";
-    else if (strstr(lower, "goldlewis") || strstr(lower, "dickinson")) result = "Goldlewis Dickinson";
-    else if (strstr(lower, "baiken") || strstr(lower, "jam")) result = "Baiken"; /* Jam Chie might be over Baiken */
-    else if (strstr(lower, "testament")) result = "Testament";
-    else if (strstr(lower, "bridget")) result = "Bridget";
-    else if (strstr(lower, "sin")) result = "Sin Kiske";
-    else if (strstr(lower, "bedman")) result = "Bedman?";
-    else if (strstr(lower, "asuka")) result = "Asuka R#";
-    else if (strstr(lower, "johnny")) result = "Johnny";
-    else if (strstr(lower, "elphelt") || strstr(lower, "elp")) result = "Elphelt Valentine";
-    else if (strstr(lower, "aba") || strstr(lower, "a.b.a")) result = "A.B.A";
-    else if (strstr(lower, "slayer")) result = "Slayer";
-    else if (strstr(lower, "unika")) result = "Unika";
-    else if (strstr(lower, "lucy")) result = "Lucy";
-    else result = "Unknown / Other";
-
-    gchar *ret = g_strdup(result);
-    g_free(lower);
-    return ret;
 }
