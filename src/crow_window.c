@@ -13,14 +13,17 @@ struct _CrowWindow {
     GtkWidget   *header_bar;
     GtkWidget   *settings_btn;
     GtkWidget   *refresh_btn;
+    GtkWidget   *search_entry;
     GtkWidget   *stack;
     GtkWidget   *scrolled_window;
     GtkWidget   *list_view;
     GtkWidget   *empty_box;
 
     /* Data */
-    GListStore  *mod_store;
-    gchar       *ggst_path;
+    GListStore         *mod_store;
+    GtkFilterListModel *filter_model;
+    GtkFilter          *search_filter;
+    gchar              *ggst_path;
 };
 
 G_DEFINE_TYPE(CrowWindow, crow_window, GTK_TYPE_APPLICATION_WINDOW)
@@ -30,6 +33,7 @@ G_DEFINE_TYPE(CrowWindow, crow_window, GTK_TYPE_APPLICATION_WINDOW)
 static void crow_window_refresh_mods(CrowWindow *self);
 static void on_settings_clicked(GtkButton *button, gpointer user_data);
 static void on_refresh_clicked(GtkButton *button, gpointer user_data);
+static void on_search_changed(GtkSearchEntry *entry, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
 
@@ -121,12 +125,37 @@ static void factory_unbind(GtkSignalListItemFactory *factory,
     }
 }
 
+/* ---------- Search Filter ---------- */
+
+static gboolean mod_search_filter_func(gpointer item, gpointer user_data) {
+    CrowWindow *self = CROW_WINDOW(user_data);
+    CrowMod *mod = CROW_MOD(item);
+
+    const char *search_text = gtk_editable_get_text(GTK_EDITABLE(self->search_entry));
+    if (!search_text || search_text[0] == '\0') {
+        return TRUE;
+    }
+
+    const char *mod_name = crow_mod_get_name(mod);
+    
+    char *lower_name = g_utf8_strdown(mod_name, -1);
+    char *lower_search = g_utf8_strdown(search_text, -1);
+    
+    gboolean match = strstr(lower_name, lower_search) != NULL;
+    
+    g_free(lower_name);
+    g_free(lower_search);
+    
+    return match;
+}
+
 /* ---------- GObject lifecycle ---------- */
 
 static void crow_window_finalize(GObject *object) {
     CrowWindow *self = CROW_WINDOW(object);
     g_clear_pointer(&self->ggst_path, g_free);
     g_clear_object(&self->mod_store);
+    g_clear_object(&self->filter_model);
     G_OBJECT_CLASS(crow_window_parent_class)->finalize(object);
 }
 
@@ -161,6 +190,14 @@ static void crow_window_init(CrowWindow *self) {
     gtk_header_bar_pack_end(GTK_HEADER_BAR(self->header_bar), self->refresh_btn);
     g_signal_connect(self->refresh_btn, "clicked",
                      G_CALLBACK(on_refresh_clicked), self);
+
+    /* Search entry (right, before refresh) */
+    self->search_entry = gtk_search_entry_new();
+    gtk_widget_set_tooltip_text(self->search_entry, "Search Mods");
+    gtk_widget_set_size_request(self->search_entry, 200, -1);
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(self->header_bar), self->search_entry);
+    g_signal_connect(self->search_entry, "search-changed",
+                     G_CALLBACK(on_search_changed), self);
 
     /* --- Main content: Stack with list view + empty state --- */
     self->stack = gtk_stack_new();
@@ -236,6 +273,13 @@ static void crow_window_init(CrowWindow *self) {
     self->mod_store = g_list_store_new(CROW_TYPE_MOD);
     self->ggst_path = NULL;
 
+    /* Search filter & model */
+    self->search_filter = GTK_FILTER(gtk_custom_filter_new(
+        mod_search_filter_func, self, NULL));
+    
+    self->filter_model = gtk_filter_list_model_new(
+        G_LIST_MODEL(g_object_ref(self->mod_store)), self->search_filter);
+
     /* --- List View with factory --- */
     GtkListItemFactory *factory = gtk_signal_list_item_factory_new();
     g_signal_connect(factory, "setup", G_CALLBACK(factory_setup), NULL);
@@ -243,7 +287,7 @@ static void crow_window_init(CrowWindow *self) {
     g_signal_connect(factory, "unbind", G_CALLBACK(factory_unbind), NULL);
 
     GtkNoSelection *selection_model =
-        gtk_no_selection_new(G_LIST_MODEL(g_object_ref(self->mod_store)));
+        gtk_no_selection_new(G_LIST_MODEL(self->filter_model));
 
     self->list_view = gtk_list_view_new(GTK_SELECTION_MODEL(selection_model),
                                         factory);
@@ -331,6 +375,12 @@ static void on_settings_clicked(GtkButton *button, gpointer user_data) {
 static void on_refresh_clicked(GtkButton *button, gpointer user_data) {
     (void)button;
     crow_window_refresh_mods(CROW_WINDOW(user_data));
+}
+
+static void on_search_changed(GtkSearchEntry *entry, gpointer user_data) {
+    (void)entry;
+    CrowWindow *self = CROW_WINDOW(user_data);
+    gtk_filter_changed(self->search_filter, GTK_FILTER_CHANGE_DIFFERENT);
 }
 
 /* ---------- Mod refresh ---------- */
