@@ -75,10 +75,19 @@ static void factory_setup(GtkSignalListItemFactory *factory,
     gtk_widget_set_margin_top(box, 8);
     gtk_widget_set_margin_bottom(box, 8);
 
+    GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    gtk_widget_set_hexpand(vbox, TRUE);
+    gtk_box_append(GTK_BOX(box), vbox);
+
     GtkWidget *label = gtk_label_new("");
     gtk_label_set_xalign(GTK_LABEL(label), 0.0f);
-    gtk_widget_set_hexpand(label, TRUE);
-    gtk_box_append(GTK_BOX(box), label);
+    gtk_box_append(GTK_BOX(vbox), label);
+
+    GtkWidget *char_label = gtk_label_new("");
+    gtk_label_set_xalign(GTK_LABEL(char_label), 0.0f);
+    gtk_widget_add_css_class(char_label, "caption");
+    gtk_widget_add_css_class(char_label, "dim-label");
+    gtk_box_append(GTK_BOX(vbox), char_label);
 
     GtkWidget *sw = gtk_switch_new();
     gtk_widget_set_valign(sw, GTK_ALIGN_CENTER);
@@ -93,12 +102,17 @@ static void factory_bind(GtkSignalListItemFactory *factory,
     (void)user_data;
 
     GtkWidget *box = gtk_list_item_get_child(list_item);
-    GtkWidget *label = gtk_widget_get_first_child(box);
+    GtkWidget *vbox = gtk_widget_get_first_child(box);
+    GtkWidget *label = gtk_widget_get_first_child(vbox);
+    GtkWidget *char_label = gtk_widget_get_last_child(vbox);
     GtkWidget *sw = gtk_widget_get_last_child(box);
 
     CrowMod *mod = gtk_list_item_get_item(list_item);
 
     gtk_label_set_text(GTK_LABEL(label), crow_mod_get_name(mod));
+    
+    const gchar *character = crow_mod_get_character(mod);
+    gtk_label_set_text(GTK_LABEL(char_label), character ? character : "Unknown");
 
     /* Block signal before setting initial state to avoid triggering toggle */
     gulong handler_id = g_signal_connect(sw, "notify::active",

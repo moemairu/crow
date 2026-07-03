@@ -13,7 +13,13 @@ pkg_check_modules(GTK4 REQUIRED IMPORTED_TARGET gtk4)
 file(GLOB CROW_SOURCES src/*.c)
 
 # --- Executable ---
-add_executable(crow ${CROW_SOURCES})
+add_executable(crow
+    src/main.c
+    src/config.c
+    src/crow_mod.c
+    src/crow_pak.c
+    src/crow_window.c
+)
 
 target_include_directories(crow PRIVATE ${CMAKE_SOURCE_DIR}/include)
 target_link_libraries(crow PRIVATE PkgConfig::GTK4)

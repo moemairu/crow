@@ -1,4 +1,5 @@
 #include "crow_mod.h"
+#include "crow_pak.h"
 
 #include <gio/gio.h>
 #include <glib/gstdio.h>
@@ -11,6 +12,7 @@ struct _CrowMod {
     GObject parent_instance;
     gchar   *name;
     gchar   *path;
+    gchar   *character;
     gboolean enabled;
 };
 
@@ -18,6 +20,7 @@ enum {
     PROP_0,
     PROP_NAME,
     PROP_PATH,
+    PROP_CHARACTER,
     PROP_ENABLED,
     N_PROPS
 };
@@ -30,6 +33,7 @@ static void crow_mod_finalize(GObject *object) {
     CrowMod *self = CROW_MOD(object);
     g_free(self->name);
     g_free(self->path);
+    g_free(self->character);
     G_OBJECT_CLASS(crow_mod_parent_class)->finalize(object);
 }
 
@@ -37,10 +41,11 @@ static void crow_mod_get_property(GObject *object, guint prop_id,
                                   GValue *value, GParamSpec *pspec) {
     CrowMod *self = CROW_MOD(object);
     switch (prop_id) {
-        case PROP_NAME:    g_value_set_string(value, self->name);    break;
-        case PROP_PATH:    g_value_set_string(value, self->path);    break;
-        case PROP_ENABLED: g_value_set_boolean(value, self->enabled); break;
-        default:           G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        case PROP_NAME:      g_value_set_string(value, self->name);      break;
+        case PROP_PATH:      g_value_set_string(value, self->path);      break;
+        case PROP_CHARACTER: g_value_set_string(value, self->character); break;
+        case PROP_ENABLED:   g_value_set_boolean(value, self->enabled);  break;
+        default:             G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
     }
 }
 
@@ -55,6 +60,10 @@ static void crow_mod_set_property(GObject *object, guint prop_id,
         case PROP_PATH:
             g_free(self->path);
             self->path = g_value_dup_string(value);
+            break;
+        case PROP_CHARACTER:
+            g_free(self->character);
+            self->character = g_value_dup_string(value);
             break;
         case PROP_ENABLED:
             self->enabled = g_value_get_boolean(value);
@@ -79,6 +88,10 @@ static void crow_mod_class_init(CrowModClass *klass) {
         "path", "Path", "Absolute path to the mod file",
         NULL, G_PARAM_READWRITE);
 
+    props[PROP_CHARACTER] = g_param_spec_string(
+        "character", "Character", "Target character for the mod",
+        NULL, G_PARAM_READWRITE);
+
     props[PROP_ENABLED] = g_param_spec_boolean(
         "enabled", "Enabled", "Whether the mod is active",
         FALSE, G_PARAM_READWRITE);
@@ -87,19 +100,24 @@ static void crow_mod_class_init(CrowModClass *klass) {
 }
 
 static void crow_mod_init(CrowMod *self) {
-    self->name    = NULL;
-    self->path    = NULL;
-    self->enabled = FALSE;
+    self->name      = NULL;
+    self->path      = NULL;
+    self->character = NULL;
+    self->enabled   = FALSE;
 }
 
 /* ---------- Public API ---------- */
 
 CrowMod *crow_mod_new(const gchar *name, const gchar *path, gboolean enabled) {
-    return g_object_new(CROW_TYPE_MOD,
-                        "name", name,
-                        "path", path,
-                        "enabled", enabled,
-                        NULL);
+    gchar *character = crow_pak_detect_character(path);
+    CrowMod *mod = g_object_new(CROW_TYPE_MOD,
+                                "name", name,
+                                "path", path,
+                                "character", character,
+                                "enabled", enabled,
+                                NULL);
+    g_free(character);
+    return mod;
 }
 
 const gchar *crow_mod_get_name(CrowMod *self) {
@@ -110,6 +128,11 @@ const gchar *crow_mod_get_name(CrowMod *self) {
 const gchar *crow_mod_get_path(CrowMod *self) {
     g_return_val_if_fail(CROW_IS_MOD(self), NULL);
     return self->path;
+}
+
+const gchar *crow_mod_get_character(CrowMod *self) {
+    g_return_val_if_fail(CROW_IS_MOD(self), NULL);
+    return self->character;
 }
 
 gboolean crow_mod_get_enabled(CrowMod *self) {

@@ -19,6 +19,7 @@ CrowMod *crow_mod_new(const gchar *name, const gchar *path, gboolean enabled);
 /* Property accessors */
 const gchar *crow_mod_get_name(CrowMod *self);
 const gchar *crow_mod_get_path(CrowMod *self);
+const gchar *crow_mod_get_character(CrowMod *self);
 gboolean     crow_mod_get_enabled(CrowMod *self);
 
 /**
