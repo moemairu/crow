@@ -13,6 +13,7 @@ struct _CrowWindow {
     GtkWidget   *header_bar;
     GtkWidget   *settings_btn;
     GtkWidget   *refresh_btn;
+    GtkWidget   *add_btn;
     GtkWidget   *search_entry;
     GtkWidget   *filter_dropdown;
     GtkWidget   *char_filter_btn;
@@ -43,6 +44,8 @@ static void on_char_check_toggled(GtkCheckButton *button, gpointer user_data);
 static gboolean on_files_dropped(GtkDropTarget *target, const GValue *value, double x, double y, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
+static void on_add_mod_clicked(GtkButton *button, gpointer user_data);
+static void on_mod_files_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 
 /* ---------- Switch toggle handler ---------- */
 
@@ -239,6 +242,13 @@ static void crow_window_init(CrowWindow *self) {
     g_signal_connect(self->settings_btn, "clicked",
                      G_CALLBACK(on_settings_clicked), self);
 
+    /* Add button (left) */
+    self->add_btn = gtk_button_new_from_icon_name("list-add-symbolic");
+    gtk_widget_set_tooltip_text(self->add_btn, "Install Mod (.pak/.sig)");
+    gtk_header_bar_pack_start(GTK_HEADER_BAR(self->header_bar), self->add_btn);
+    g_signal_connect(self->add_btn, "clicked",
+                     G_CALLBACK(on_add_mod_clicked), self);
+
     /* Refresh button (right) */
     self->refresh_btn = gtk_button_new_from_icon_name("view-refresh-symbolic");
     gtk_widget_set_tooltip_text(self->refresh_btn, "Refresh Mods");
@@ -426,6 +436,85 @@ static void crow_window_prompt_directory(CrowWindow *self) {
     gtk_file_dialog_select_folder(dialog, GTK_WINDOW(self), NULL,
                                   on_folder_selected, self);
     g_object_unref(dialog);
+}
+
+static void on_add_mod_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
+    CrowWindow *self = CROW_WINDOW(user_data);
+
+    if (!self->ggst_path) {
+        g_printerr("crow: GGST path not set.\n");
+        return;
+    }
+
+    GtkFileDialog *dialog = gtk_file_dialog_new();
+    gtk_file_dialog_set_title(dialog, "Select Mod Files (.pak, .sig)");
+
+    GtkFileFilter *filter = gtk_file_filter_new();
+    gtk_file_filter_set_name(filter, "Mod Files (*.pak, *.sig)");
+    gtk_file_filter_add_pattern(filter, "*.pak");
+    gtk_file_filter_add_pattern(filter, "*.sig");
+    
+    GListStore *filters = g_list_store_new(GTK_TYPE_FILE_FILTER);
+    g_list_store_append(filters, filter);
+    gtk_file_dialog_set_filters(dialog, G_LIST_MODEL(filters));
+    g_object_unref(filter);
+    g_object_unref(filters);
+
+    gtk_file_dialog_open_multiple(dialog, GTK_WINDOW(self), NULL,
+                                  on_mod_files_selected, self);
+    g_object_unref(dialog);
+}
+
+static void on_mod_files_selected(GObject *source, GAsyncResult *result, gpointer user_data) {
+    CrowWindow *self = CROW_WINDOW(user_data);
+    GtkFileDialog *dialog = GTK_FILE_DIALOG(source);
+    GError *error = NULL;
+
+    GListModel *files = gtk_file_dialog_open_multiple_finish(dialog, result, &error);
+    if (!files) {
+        if (error) {
+            g_printerr("crow: Failed to select files: %s\n", error->message);
+            g_error_free(error);
+        }
+        return;
+    }
+
+    gboolean copied_any = FALSE;
+    gchar *mods_dir = g_build_filename(self->ggst_path, "RED", "Content", "Paks", "~mods", NULL);
+    g_mkdir_with_parents(mods_dir, 0755);
+
+    guint n_files = g_list_model_get_n_items(files);
+    for (guint i = 0; i < n_files; i++) {
+        GFile *src_file = G_FILE(g_list_model_get_item(files, i));
+        gchar *basename = g_file_get_basename(src_file);
+
+        if (basename) {
+            gchar *dest_path = g_build_filename(mods_dir, basename, NULL);
+            GFile *dest_file = g_file_new_for_path(dest_path);
+            
+            GError *copy_err = NULL;
+            if (g_file_copy(src_file, dest_file, G_FILE_COPY_OVERWRITE, NULL, NULL, NULL, &copy_err)) {
+                g_print("crow: installed %s\n", basename);
+                copied_any = TRUE;
+            } else {
+                g_printerr("crow: failed to copy %s: %s\n", basename, copy_err->message);
+                g_error_free(copy_err);
+            }
+            
+            g_object_unref(dest_file);
+            g_free(dest_path);
+            g_free(basename);
+        }
+        g_object_unref(src_file);
+    }
+
+    g_object_unref(files);
+    g_free(mods_dir);
+
+    if (copied_any) {
+        crow_window_refresh_mods(self);
+    }
 }
 
 static void on_folder_selected(GObject *source, GAsyncResult *result,
