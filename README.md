@@ -30,6 +30,8 @@ Point it at your GGST install, and it gives you a clean list of switches to flip
 | Feature | Details |
 |---------|---------|
 | 🔀 **One-Click Toggle** | Enable/disable mods instantly with a `GtkSwitch` |
+| 📦 **Easy Install** | Install mods via Drag & Drop or the "Add Mod" button |
+| 🎭 **Auto Character Tag** | Scans inside `.pak` binaries to auto-detect characters |
 | 🔍 **Mod Search** | Find mods instantly by name with real-time filtering |
 | 🏷️ **Status Filter** | Filter the list by All Mods, Enabled, or Disabled |
 | 🔗 **Smart .sig Handling** | Automatically renames companion `.sig` files alongside `.pak` |
@@ -62,9 +64,9 @@ On first launch, Crow will ask you to select your GGST install directory. After 
    ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
    │  1.SCAN  │────▶│ 2.PARSE  │────▶│ 3.RENDER │────▶│ 4.TOGGLE │
    │          │     │          │     │          │     │          │
-   │ Read all │     │ .pak =ON │     │ GtkList  │     │ rename() │
-   │ files in │     │ .pak.dis │     │ with     │     │ .pak ↔   │
-   │  ~mods/  │     │  = OFF   │     │ switches │     │ .pak.dis │
+   │ Read all │     │ Read .pak│     │ GtkList  │     │ rename() │
+   │ files in │     │ for char │     │ with     │     │ .pak ↔   │
+   │  ~mods/  │     │ metadata │     │ switches │     │ .pak.dis │
    └──────────┘     └──────────┘     └──────────┘     └──────────┘
                                                             │
                                                       ┌─────┴─────┐
@@ -133,12 +135,14 @@ crow/
 ├── include/
 │   ├── config.h              # ⚙️ XDG config load/save
 │   ├── crow_mod.h            # 🎯 Mod data model, scanner, toggle
+│   ├── crow_pak.h            # 📦 Unreal Engine .pak parser for metadata
 │   └── crow_window.h         # 🖼️ Main application window
 └── src/
     ├── main.c                # 🚀 GtkApplication entry point
     ├── config.c              # 📝 GKeyFile-based config management
     ├── crow_mod.c            # 🔀 GObject mod model + file operations
-    └── crow_window.c         # 🖥️ UI: HeaderBar, ListView, empty state
+    ├── crow_pak.c            # 📦 Fast binary parsing & fallback heuristics
+    └── crow_window.c         # 🖥️ UI: HeaderBar, ListView, DND, empty state
 ```
 
 ---
@@ -162,8 +166,8 @@ crow/
 - [x] ~~Core mod toggle (.pak ↔ .pak.disabled)~~ ✅
 - [x] ~~Smart .sig companion handling~~ ✅
 - [x] ~~XDG-compliant configuration~~ ✅
-- [x] ~~Empty state with friendly message~~ ✅
 - [x] ~~Mod search & status filter~~ ✅
+- [x] ~~Native character auto-detection (`.pak` parser)~~ ✅
 - [x] ~~Drag-and-drop mod installation~~ ✅
 - [ ] Load order management
 - [ ] Mod profiles (presets)
