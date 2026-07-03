@@ -359,6 +359,7 @@ static void crow_window_init(CrowWindow *self) {
     gtk_label_set_justify(GTK_LABEL(self->drop_label), GTK_JUSTIFY_CENTER);
     gtk_widget_add_css_class(self->drop_label, "drop-overlay");
     gtk_widget_set_visible(self->drop_label, FALSE); /* Hidden by default */
+    gtk_widget_set_can_target(self->drop_label, FALSE); /* Prevent blocking drops */
     gtk_widget_set_valign(self->drop_label, GTK_ALIGN_CENTER);
     gtk_widget_set_halign(self->drop_label, GTK_ALIGN_CENTER);
     gtk_overlay_add_overlay(GTK_OVERLAY(self->drop_overlay), self->drop_label);
