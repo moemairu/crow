@@ -263,7 +263,10 @@ static void crow_window_init(CrowWindow *self) {
     gtk_menu_button_set_popover(GTK_MENU_BUTTON(self->char_filter_btn), self->char_filter_popover);
     
     GtkWidget *scroll = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scroll), 200);
     gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 300);
+    gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(scroll), TRUE);
+    gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll), TRUE);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_popover_set_child(GTK_POPOVER(self->char_filter_popover), scroll);
     
