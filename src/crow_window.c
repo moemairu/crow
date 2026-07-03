@@ -40,6 +40,7 @@ static void on_refresh_clicked(GtkButton *button, gpointer user_data);
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data);
 static void on_filter_changed(GObject *object, GParamSpec *pspec, gpointer user_data);
 static void on_char_check_toggled(GtkCheckButton *button, gpointer user_data);
+static gboolean on_files_dropped(GtkDropTarget *target, const GValue *value, double x, double y, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
 
@@ -397,8 +398,14 @@ static void crow_window_init(CrowWindow *self) {
         GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     g_object_unref(css);
 
-    /* Window defaults */
-    gtk_window_set_default_size(GTK_WINDOW(self), 800, 500);
+    /* --- Setup main window properties --- */
+    gtk_window_set_title(GTK_WINDOW(self), "Crow");
+    gtk_window_set_default_size(GTK_WINDOW(self), 700, 500);
+
+    /* Drag-and-drop support */
+    GtkDropTarget *drop_target = gtk_drop_target_new(GDK_TYPE_FILE_LIST, GDK_ACTION_COPY);
+    g_signal_connect(drop_target, "drop", G_CALLBACK(on_files_dropped), self);
+    gtk_widget_add_controller(GTK_WIDGET(self), GTK_EVENT_CONTROLLER(drop_target));
 
     /* Load config and either show mods or prompt for directory */
     self->ggst_path = crow_config_load();
@@ -480,6 +487,67 @@ static void on_char_check_toggled(GtkCheckButton *button, gpointer user_data) {
     (void)button;
     CrowWindow *self = CROW_WINDOW(user_data);
     gtk_filter_changed(self->search_filter, GTK_FILTER_CHANGE_DIFFERENT);
+}
+
+static gboolean on_files_dropped(GtkDropTarget *target, const GValue *value, double x, double y, gpointer user_data) {
+    (void)target;
+    (void)x;
+    (void)y;
+    CrowWindow *self = CROW_WINDOW(user_data);
+
+    if (!self->ggst_path) {
+        g_printerr("crow: GGST path not set, cannot install dropped mods.\n");
+        return FALSE;
+    }
+
+    if (!G_VALUE_HOLDS(value, GDK_TYPE_FILE_LIST)) return FALSE;
+
+    GdkFileList *file_list = g_value_get_boxed(value);
+    if (!file_list) return FALSE;
+
+    GSList *files = gdk_file_list_get_files(file_list);
+    gboolean copied_any = FALSE;
+
+    gchar *mods_dir = g_build_filename(self->ggst_path, "RED", "Content", "Paks", "~mods", NULL);
+    g_mkdir_with_parents(mods_dir, 0755);
+
+    for (GSList *l = files; l != NULL; l = l->next) {
+        GFile *src_file = G_FILE(l->data);
+        gchar *basename = g_file_get_basename(src_file);
+        
+        if (!basename) continue;
+
+        if (g_str_has_suffix(basename, ".pak") || 
+            g_str_has_suffix(basename, ".sig") ||
+            g_str_has_suffix(basename, ".pak.disabled") ||
+            g_str_has_suffix(basename, ".sig.disabled")) {
+            
+            gchar *dest_path = g_build_filename(mods_dir, basename, NULL);
+            GFile *dest_file = g_file_new_for_path(dest_path);
+            
+            GError *error = NULL;
+            if (g_file_copy(src_file, dest_file, G_FILE_COPY_OVERWRITE, NULL, NULL, NULL, &error)) {
+                g_print("crow: installed %s\n", basename);
+                copied_any = TRUE;
+            } else {
+                g_printerr("crow: failed to copy %s: %s\n", basename, error->message);
+                g_error_free(error);
+            }
+            
+            g_object_unref(dest_file);
+            g_free(dest_path);
+        }
+        g_free(basename);
+    }
+
+    g_slist_free_full(files, g_object_unref);
+    g_free(mods_dir);
+
+    if (copied_any) {
+        crow_window_refresh_mods(self);
+    }
+
+    return TRUE;
 }
 
 /* ---------- Mod refresh ---------- */

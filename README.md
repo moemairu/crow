@@ -164,7 +164,7 @@ crow/
 - [x] ~~XDG-compliant configuration~~ ✅
 - [x] ~~Empty state with friendly message~~ ✅
 - [x] ~~Mod search & status filter~~ ✅
-- [ ] Drag-and-drop mod installation
+- [x] ~~Drag-and-drop mod installation~~ ✅
 - [ ] Load order management
 - [ ] Mod profiles (presets)
 
