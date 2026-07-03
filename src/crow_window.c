@@ -15,6 +15,9 @@ struct _CrowWindow {
     GtkWidget   *refresh_btn;
     GtkWidget   *search_entry;
     GtkWidget   *filter_dropdown;
+    GtkWidget   *char_filter_btn;
+    GtkWidget   *char_filter_popover;
+    GtkWidget   *char_filter_box;
     GtkWidget   *stack;
     GtkWidget   *scrolled_window;
     GtkWidget   *list_view;
@@ -36,6 +39,7 @@ static void on_settings_clicked(GtkButton *button, gpointer user_data);
 static void on_refresh_clicked(GtkButton *button, gpointer user_data);
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data);
 static void on_filter_changed(GObject *object, GParamSpec *pspec, gpointer user_data);
+static void on_char_check_toggled(GtkCheckButton *button, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
 
@@ -155,6 +159,32 @@ static gboolean mod_search_filter_func(gpointer item, gpointer user_data) {
         return FALSE;
     }
 
+    /* Filter by character checkbox */
+    gboolean has_checked = FALSE;
+    gboolean char_matched = FALSE;
+    const gchar *mod_char = crow_mod_get_character(mod);
+    if (!mod_char) mod_char = "Unknown / Other";
+
+    for (GtkWidget *child = gtk_widget_get_first_child(self->char_filter_box);
+         child != NULL;
+         child = gtk_widget_get_next_sibling(child)) {
+        
+        if (GTK_IS_CHECK_BUTTON(child)) {
+            if (gtk_check_button_get_active(GTK_CHECK_BUTTON(child))) {
+                has_checked = TRUE;
+                const gchar *label = gtk_check_button_get_label(GTK_CHECK_BUTTON(child));
+                if (g_strcmp0(mod_char, label) == 0) {
+                    char_matched = TRUE;
+                }
+            }
+        }
+    }
+    
+    if (has_checked && !char_matched) {
+        return FALSE;
+    }
+
+    /* Filter by search text */
     const char *search_text = gtk_editable_get_text(GTK_EDITABLE(self->search_entry));
     if (!search_text || search_text[0] == '\0') {
         return TRUE;
@@ -223,7 +253,28 @@ static void crow_window_init(CrowWindow *self) {
     g_signal_connect(self->filter_dropdown, "notify::selected",
                      G_CALLBACK(on_filter_changed), self);
 
-    /* Search entry (right, before filter) */
+    /* Character Filter (right, before status filter) */
+    self->char_filter_btn = gtk_menu_button_new();
+    gtk_menu_button_set_label(GTK_MENU_BUTTON(self->char_filter_btn), "Characters");
+    gtk_widget_set_tooltip_text(self->char_filter_btn, "Filter by Character");
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(self->header_bar), self->char_filter_btn);
+    
+    self->char_filter_popover = gtk_popover_new();
+    gtk_menu_button_set_popover(GTK_MENU_BUTTON(self->char_filter_btn), self->char_filter_popover);
+    
+    GtkWidget *scroll = gtk_scrolled_window_new();
+    gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll), 300);
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_popover_set_child(GTK_POPOVER(self->char_filter_popover), scroll);
+    
+    self->char_filter_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 6);
+    gtk_widget_set_margin_start(self->char_filter_box, 12);
+    gtk_widget_set_margin_end(self->char_filter_box, 12);
+    gtk_widget_set_margin_top(self->char_filter_box, 12);
+    gtk_widget_set_margin_bottom(self->char_filter_box, 12);
+    gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), self->char_filter_box);
+
+    /* Search entry (right, before character filter) */
     self->search_entry = gtk_search_entry_new();
     gtk_widget_set_tooltip_text(self->search_entry, "Search Mods");
     gtk_widget_set_size_request(self->search_entry, 200, -1);
@@ -422,40 +473,71 @@ static void on_filter_changed(GObject *object, GParamSpec *pspec, gpointer user_
     gtk_filter_changed(self->search_filter, GTK_FILTER_CHANGE_DIFFERENT);
 }
 
+static void on_char_check_toggled(GtkCheckButton *button, gpointer user_data) {
+    (void)button;
+    CrowWindow *self = CROW_WINDOW(user_data);
+    gtk_filter_changed(self->search_filter, GTK_FILTER_CHANGE_DIFFERENT);
+}
+
 /* ---------- Mod refresh ---------- */
 
 static void crow_window_refresh_mods(CrowWindow *self) {
-    if (!self->ggst_path) {
-        gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
-        return;
-    }
+    if (!self->ggst_path) return;
 
     GListStore *new_store = crow_mod_scan_directory(self->ggst_path);
-    if (!new_store) {
-        gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
-        return;
-    }
+    if (new_store) {
+        g_list_store_remove_all(self->mod_store);
 
-    /* Replace old store contents */
-    g_list_store_remove_all(self->mod_store);
+        guint n_items = g_list_model_get_n_items(G_LIST_MODEL(new_store));
+        for (guint i = 0; i < n_items; i++) {
+            gpointer item = g_list_model_get_item(G_LIST_MODEL(new_store), i);
+            g_list_store_append(self->mod_store, item);
+            g_object_unref(item);
+        }
 
-    guint n = g_list_model_get_n_items(G_LIST_MODEL(new_store));
-    for (guint i = 0; i < n; i++) {
-        CrowMod *mod = g_list_model_get_item(G_LIST_MODEL(new_store), i);
-        g_list_store_append(self->mod_store, mod);
-        g_object_unref(mod);
-    }
+        /* Dynamically populate the character filter checkboxes */
+        GtkWidget *child = gtk_widget_get_first_child(self->char_filter_box);
+        while (child != NULL) {
+            GtkWidget *next = gtk_widget_get_next_sibling(child);
+            gtk_box_remove(GTK_BOX(self->char_filter_box), child);
+            child = next;
+        }
 
-    g_object_unref(new_store);
+        GHashTable *char_set = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+        for (guint i = 0; i < n_items; i++) {
+            CrowMod *mod = CROW_MOD(g_list_model_get_item(G_LIST_MODEL(new_store), i));
+            const gchar *chr = crow_mod_get_character(mod);
+            if (!chr) chr = "Unknown / Other";
+            if (!g_hash_table_lookup(char_set, chr)) {
+                g_hash_table_insert(char_set, g_strdup(chr), GINT_TO_POINTER(1));
+            }
+            g_object_unref(mod);
+        }
 
-    /* Toggle between list view and empty state */
-    if (n > 0) {
-        gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "list");
+        GList *keys = g_hash_table_get_keys(char_set);
+        keys = g_list_sort(keys, (GCompareFunc)g_strcmp0);
+
+        for (GList *l = keys; l != NULL; l = l->next) {
+            const gchar *chr = l->data;
+            GtkWidget *chk = gtk_check_button_new_with_label(chr);
+            g_signal_connect(chk, "toggled", G_CALLBACK(on_char_check_toggled), self);
+            gtk_box_append(GTK_BOX(self->char_filter_box), chk);
+        }
+
+        g_list_free(keys);
+        g_hash_table_destroy(char_set);
+        /* End checkbox population */
+
+        g_object_unref(new_store);
+
+        if (n_items > 0) {
+            gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "list");
+        } else {
+            gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
+        }
     } else {
         gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
     }
-
-    g_print("crow: loaded %u mod(s)\n", n);
 }
 
 /* ---------- Public API ---------- */
