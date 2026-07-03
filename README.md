@@ -30,6 +30,8 @@ Point it at your GGST install, and it gives you a clean list of switches to flip
 | Feature | Details |
 |---------|---------|
 | 🔀 **One-Click Toggle** | Enable/disable mods instantly with a `GtkSwitch` |
+| 🔍 **Mod Search** | Find mods instantly by name with real-time filtering |
+| 🏷️ **Status Filter** | Filter the list by All Mods, Enabled, or Disabled |
 | 🔗 **Smart .sig Handling** | Automatically renames companion `.sig` files alongside `.pak` |
 | 📁 **XDG-Compliant Config** | Saves your GGST path to `~/.config/crow/config.ini` |
 | 🖥️ **Native GTK4 UI** | `GtkHeaderBar`, `GtkListView`, feels native on GNOME |
@@ -161,7 +163,7 @@ crow/
 - [x] ~~Smart .sig companion handling~~ ✅
 - [x] ~~XDG-compliant configuration~~ ✅
 - [x] ~~Empty state with friendly message~~ ✅
-- [ ] Mod search / filter
+- [x] ~~Mod search & status filter~~ ✅
 - [ ] Drag-and-drop mod installation
 - [ ] Load order management
 - [ ] Mod profiles (presets)
