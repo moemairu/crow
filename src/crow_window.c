@@ -19,6 +19,8 @@ struct _CrowWindow {
     GtkWidget   *char_filter_popover;
     GtkWidget   *char_filter_box;
     GtkWidget   *stack;
+    GtkWidget   *drop_overlay;
+    GtkWidget   *drop_label;
     GtkWidget   *scrolled_window;
     GtkWidget   *list_view;
     GtkWidget   *empty_box;
@@ -40,6 +42,8 @@ static void on_refresh_clicked(GtkButton *button, gpointer user_data);
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data);
 static void on_filter_changed(GObject *object, GParamSpec *pspec, gpointer user_data);
 static void on_char_check_toggled(GtkCheckButton *button, gpointer user_data);
+static GdkDragAction on_dnd_enter(GtkDropTarget *target, double x, double y, gpointer user_data);
+static void on_dnd_leave(GtkDropTarget *target, gpointer user_data);
 static gboolean on_files_dropped(GtkDropTarget *target, const GValue *value, double x, double y, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
@@ -332,26 +336,35 @@ static void crow_window_init(CrowWindow *self) {
     gtk_stack_add_named(GTK_STACK(self->stack), list_page, "list");
 
     /* Empty state */
-    self->empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
-    gtk_widget_set_halign(self->empty_box, GTK_ALIGN_CENTER);
-    gtk_widget_set_valign(self->empty_box, GTK_ALIGN_CENTER);
-
-    GtkWidget *empty_icon = gtk_image_new_from_icon_name("folder-symbolic");
+    GtkWidget *empty_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 12);
+    gtk_widget_set_valign(empty_box, GTK_ALIGN_CENTER);
+    gtk_widget_set_halign(empty_box, GTK_ALIGN_CENTER);
+    
+    GtkWidget *empty_icon = gtk_image_new_from_icon_name("folder-open-symbolic");
     gtk_image_set_pixel_size(GTK_IMAGE(empty_icon), 64);
     gtk_widget_add_css_class(empty_icon, "dim-label");
-    gtk_box_append(GTK_BOX(self->empty_box), empty_icon);
+    
+    GtkWidget *empty_label = gtk_label_new("No mods installed.");
+    gtk_widget_add_css_class(empty_label, "title-2");
+    
+    gtk_box_append(GTK_BOX(empty_box), empty_icon);
+    gtk_box_append(GTK_BOX(empty_box), empty_label);
+    
+    gtk_stack_add_named(GTK_STACK(self->stack), empty_box, "empty");
 
-    GtkWidget *empty_title = gtk_label_new("No Mods Found");
-    gtk_widget_add_css_class(empty_title, "title-2");
-    gtk_widget_add_css_class(empty_title, "dim-label");
-    gtk_box_append(GTK_BOX(self->empty_box), empty_title);
+    /* DND Overlay Wrapper */
+    self->drop_overlay = gtk_overlay_new();
+    gtk_overlay_set_child(GTK_OVERLAY(self->drop_overlay), self->stack);
 
-    GtkWidget *empty_sub = gtk_label_new(
-        "Set your GGST directory or place .pak files in the ~mods folder");
-    gtk_widget_add_css_class(empty_sub, "dim-label");
-    gtk_box_append(GTK_BOX(self->empty_box), empty_sub);
+    self->drop_label = gtk_label_new("Drop Mods Here\n(.pak or .sig)");
+    gtk_label_set_justify(GTK_LABEL(self->drop_label), GTK_JUSTIFY_CENTER);
+    gtk_widget_add_css_class(self->drop_label, "drop-overlay");
+    gtk_widget_set_visible(self->drop_label, FALSE); /* Hidden by default */
+    gtk_widget_set_valign(self->drop_label, GTK_ALIGN_CENTER);
+    gtk_widget_set_halign(self->drop_label, GTK_ALIGN_CENTER);
+    gtk_overlay_add_overlay(GTK_OVERLAY(self->drop_overlay), self->drop_label);
 
-    gtk_stack_add_named(GTK_STACK(self->stack), self->empty_box, "empty");
+    gtk_window_set_child(GTK_WINDOW(self), self->drop_overlay);
 
     /* Show empty state by default */
     gtk_stack_set_visible_child_name(GTK_STACK(self->stack), "empty");
@@ -391,6 +404,14 @@ static void crow_window_init(CrowWindow *self) {
         "listview.crow-list row:last-child { "
         "  border-bottom: none; "
         "} "
+        ".drop-overlay { "
+        "  background-color: rgba(40, 120, 240, 0.95); "
+        "  color: white; "
+        "  border-radius: 18px; "
+        "  padding: 48px; "
+        "  font-size: 24pt; "
+        "  font-weight: bold; "
+        "} "
     );
     gtk_style_context_add_provider_for_display(
         gdk_display_get_default(),
@@ -404,6 +425,8 @@ static void crow_window_init(CrowWindow *self) {
 
     /* Drag-and-drop support */
     GtkDropTarget *drop_target = gtk_drop_target_new(GDK_TYPE_FILE_LIST, GDK_ACTION_COPY);
+    g_signal_connect(drop_target, "enter", G_CALLBACK(on_dnd_enter), self);
+    g_signal_connect(drop_target, "leave", G_CALLBACK(on_dnd_leave), self);
     g_signal_connect(drop_target, "drop", G_CALLBACK(on_files_dropped), self);
     gtk_widget_add_controller(GTK_WIDGET(self), GTK_EVENT_CONTROLLER(drop_target));
 
@@ -489,11 +512,28 @@ static void on_char_check_toggled(GtkCheckButton *button, gpointer user_data) {
     gtk_filter_changed(self->search_filter, GTK_FILTER_CHANGE_DIFFERENT);
 }
 
+static GdkDragAction on_dnd_enter(GtkDropTarget *target, double x, double y, gpointer user_data) {
+    (void)target;
+    (void)x;
+    (void)y;
+    CrowWindow *self = CROW_WINDOW(user_data);
+    gtk_widget_set_visible(self->drop_label, TRUE);
+    return GDK_ACTION_COPY;
+}
+
+static void on_dnd_leave(GtkDropTarget *target, gpointer user_data) {
+    (void)target;
+    CrowWindow *self = CROW_WINDOW(user_data);
+    gtk_widget_set_visible(self->drop_label, FALSE);
+}
+
 static gboolean on_files_dropped(GtkDropTarget *target, const GValue *value, double x, double y, gpointer user_data) {
     (void)target;
     (void)x;
     (void)y;
     CrowWindow *self = CROW_WINDOW(user_data);
+
+    gtk_widget_set_visible(self->drop_label, FALSE);
 
     if (!self->ggst_path) {
         g_printerr("crow: GGST path not set, cannot install dropped mods.\n");
