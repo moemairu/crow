@@ -110,6 +110,11 @@ static void crow_mod_init(CrowMod *self) {
 
 CrowMod *crow_mod_new(const gchar *name, const gchar *path, gboolean enabled) {
     gchar *character = crow_pak_detect_character(path);
+    if (g_strcmp0(character, "Unknown / Other") == 0) {
+        g_free(character);
+        character = crow_pak_guess_from_name(name);
+    }
+
     CrowMod *mod = g_object_new(CROW_TYPE_MOD,
                                 "name", name,
                                 "path", path,

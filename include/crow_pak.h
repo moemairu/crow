@@ -17,6 +17,15 @@ G_BEGIN_DECLS
  */
 gchar *crow_pak_detect_character(const gchar *pak_path);
 
+/**
+ * Fallback: tries to guess the character based on the mod's file name.
+ * 
+ * @param name Display name of the mod.
+ * @return A newly allocated string with the guessed character name, 
+ *         or "Unknown / Other" if guessing fails.
+ */
+gchar *crow_pak_guess_from_name(const gchar *name);
+
 G_END_DECLS
 
 #endif /* CROW_PAK_H */

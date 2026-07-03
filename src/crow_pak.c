@@ -155,3 +155,45 @@ gchar *crow_pak_detect_character(const gchar *pak_path) {
 
     return g_strdup("Unknown / Other");
 }
+
+gchar *crow_pak_guess_from_name(const gchar *name) {
+    if (!name) return g_strdup("Unknown / Other");
+    
+    gchar *lower = g_utf8_strdown(name, -1);
+    gchar *result = NULL;
+
+    if (strstr(lower, "sol") || strstr(lower, "badguy")) result = "Sol Badguy";
+    else if (strstr(lower, "ky") || strstr(lower, "kiske")) result = "Ky Kiske";
+    else if (strstr(lower, "may")) result = "May";
+    else if (strstr(lower, "axl") || strstr(lower, "low")) result = "Axl Low";
+    else if (strstr(lower, "chipp") || strstr(lower, "zanuff")) result = "Chipp Zanuff";
+    else if (strstr(lower, "pot") || strstr(lower, "potemkin")) result = "Potemkin";
+    else if (strstr(lower, "faust")) result = "Faust";
+    else if (strstr(lower, "millia") || strstr(lower, "mli")) result = "Millia Rage";
+    else if (strstr(lower, "zato") || strstr(lower, "jotaro")) result = "Zato-1"; /* User specific case JoTaro01 */
+    else if (strstr(lower, "ram") || strstr(lower, "ramlethal")) result = "Ramlethal Valentine";
+    else if (strstr(lower, "leo") || strstr(lower, "whitefang")) result = "Leo Whitefang";
+    else if (strstr(lower, "nago") || strstr(lower, "nagoriyuki")) result = "Nagoriyuki";
+    else if (strstr(lower, "gio") || strstr(lower, "giovanna")) result = "Giovanna";
+    else if (strstr(lower, "ino") || strstr(lower, "i-no")) result = "I-No";
+    else if (strstr(lower, "anji") || strstr(lower, "mito")) result = "Anji Mito";
+    else if (strstr(lower, "jack") || strstr(lower, "jacko")) result = "Jack-O'";
+    else if (strstr(lower, "goldlewis") || strstr(lower, "dickinson")) result = "Goldlewis Dickinson";
+    else if (strstr(lower, "baiken") || strstr(lower, "jam")) result = "Baiken"; /* Jam Chie might be over Baiken */
+    else if (strstr(lower, "testament")) result = "Testament";
+    else if (strstr(lower, "bridget")) result = "Bridget";
+    else if (strstr(lower, "sin")) result = "Sin Kiske";
+    else if (strstr(lower, "bedman")) result = "Bedman?";
+    else if (strstr(lower, "asuka")) result = "Asuka R#";
+    else if (strstr(lower, "johnny")) result = "Johnny";
+    else if (strstr(lower, "elphelt") || strstr(lower, "elp")) result = "Elphelt Valentine";
+    else if (strstr(lower, "aba") || strstr(lower, "a.b.a")) result = "A.B.A";
+    else if (strstr(lower, "slayer")) result = "Slayer";
+    else if (strstr(lower, "unika")) result = "Unika";
+    else if (strstr(lower, "lucy")) result = "Lucy";
+    else result = "Unknown / Other";
+
+    gchar *ret = g_strdup(result);
+    g_free(lower);
+    return ret;
+}
