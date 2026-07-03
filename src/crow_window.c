@@ -14,6 +14,7 @@ struct _CrowWindow {
     GtkWidget   *settings_btn;
     GtkWidget   *refresh_btn;
     GtkWidget   *search_entry;
+    GtkWidget   *filter_dropdown;
     GtkWidget   *stack;
     GtkWidget   *scrolled_window;
     GtkWidget   *list_view;
@@ -34,6 +35,7 @@ static void crow_window_refresh_mods(CrowWindow *self);
 static void on_settings_clicked(GtkButton *button, gpointer user_data);
 static void on_refresh_clicked(GtkButton *button, gpointer user_data);
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data);
+static void on_filter_changed(GObject *object, GParamSpec *pspec, gpointer user_data);
 static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer user_data);
 static void crow_window_prompt_directory(CrowWindow *self);
 
@@ -131,6 +133,14 @@ static gboolean mod_search_filter_func(gpointer item, gpointer user_data) {
     CrowWindow *self = CROW_WINDOW(user_data);
     CrowMod *mod = CROW_MOD(item);
 
+    /* Filter by status */
+    guint selected = gtk_drop_down_get_selected(GTK_DROP_DOWN(self->filter_dropdown));
+    if (selected == 1 && !crow_mod_get_enabled(mod)) {
+        return FALSE;
+    } else if (selected == 2 && crow_mod_get_enabled(mod)) {
+        return FALSE;
+    }
+
     const char *search_text = gtk_editable_get_text(GTK_EDITABLE(self->search_entry));
     if (!search_text || search_text[0] == '\0') {
         return TRUE;
@@ -191,7 +201,15 @@ static void crow_window_init(CrowWindow *self) {
     g_signal_connect(self->refresh_btn, "clicked",
                      G_CALLBACK(on_refresh_clicked), self);
 
-    /* Search entry (right, before refresh) */
+    /* Filter Dropdown (right, before refresh) */
+    const char *filter_opts[] = {"All Mods", "Enabled", "Disabled", NULL};
+    self->filter_dropdown = gtk_drop_down_new_from_strings(filter_opts);
+    gtk_widget_set_tooltip_text(self->filter_dropdown, "Filter by status");
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(self->header_bar), self->filter_dropdown);
+    g_signal_connect(self->filter_dropdown, "notify::selected",
+                     G_CALLBACK(on_filter_changed), self);
+
+    /* Search entry (right, before filter) */
     self->search_entry = gtk_search_entry_new();
     gtk_widget_set_tooltip_text(self->search_entry, "Search Mods");
     gtk_widget_set_size_request(self->search_entry, 200, -1);
@@ -379,6 +397,13 @@ static void on_refresh_clicked(GtkButton *button, gpointer user_data) {
 
 static void on_search_changed(GtkSearchEntry *entry, gpointer user_data) {
     (void)entry;
+    CrowWindow *self = CROW_WINDOW(user_data);
+    gtk_filter_changed(self->search_filter, GTK_FILTER_CHANGE_DIFFERENT);
+}
+
+static void on_filter_changed(GObject *object, GParamSpec *pspec, gpointer user_data) {
+    (void)object;
+    (void)pspec;
     CrowWindow *self = CROW_WINDOW(user_data);
     gtk_filter_changed(self->search_filter, GTK_FILTER_CHANGE_DIFFERENT);
 }
