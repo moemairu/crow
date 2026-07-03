@@ -60,22 +60,18 @@ On first launch, Crow will ask you to select your GGST install directory. After 
 
 ## 🎬 How It Works
 
-```
-   ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-   │  1.SCAN  │────▶│ 2.PARSE  │────▶│ 3.RENDER │────▶│ 4.TOGGLE │
-   │          │     │          │     │          │     │          │
-   │ Read all │     │ Read .pak│     │ GtkList  │     │ rename() │
-   │ files in │     │ for char │     │ with     │     │ .pak ↔   │
-   │  ~mods/  │     │ metadata │     │ switches │     │ .pak.dis │
-   └──────────┘     └──────────┘     └──────────┘     └──────────┘
-                                                            │
-                                                      ┌─────┴─────┐
-                                                      │  5.SMART  │
-                                                      │           │
-                                                      │ Also find │
-                                                      │ & rename  │
-                                                      │ .sig file │
-                                                      └───────────┘
+```mermaid
+flowchart LR
+    A["**1. SCAN**<br/>Read all files<br/>in ~mods/"] --> B["**2. PARSE**<br/>Read .pak for<br/>char metadata"]
+    B --> C["**3. RENDER**<br/>GtkList with<br/>switches"]
+    C --> D["**4. TOGGLE**<br/>rename()<br/>.pak ↔ .pak.disabled"]
+    D -.-> E["**5. SMART**<br/>Also find & rename<br/>companion .sig file"]
+
+    style A fill:#4A86CF,stroke:#fff,stroke-width:2px,color:#fff
+    style B fill:#4A86CF,stroke:#fff,stroke-width:2px,color:#fff
+    style C fill:#4A86CF,stroke:#fff,stroke-width:2px,color:#fff
+    style D fill:#32CD32,stroke:#fff,stroke-width:2px,color:#fff
+    style E fill:#FF8C00,stroke:#fff,stroke-width:2px,color:#fff
 ```
 
 GGST (Unreal Engine 4) loads mods from:
