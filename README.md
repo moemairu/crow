@@ -4,7 +4,7 @@
 
 ### *Your mods. One switch away.*
 
-**A lightweight, native Linux mod loader for Guilty Gear -Strive-.**
+**A lightweight, native Linux mod loader for GGST / Guilty Gear -Strive-.**
 
 [![Language](https://img.shields.io/badge/C-C17-blue?style=flat-square&logo=c)](https://en.cppreference.com/w/c/17)
 [![GTK](https://img.shields.io/badge/GTK-4-4A86CF?style=flat-square&logo=gnome&logoColor=white)](https://gtk.org/)
