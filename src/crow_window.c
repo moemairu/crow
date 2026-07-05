@@ -14,6 +14,7 @@ struct _CrowWindow {
     GtkWidget   *settings_btn;
     GtkWidget   *refresh_btn;
     GtkWidget   *add_btn;
+    GtkWidget   *web_btn;
     GtkWidget   *search_entry;
     GtkWidget   *filter_dropdown;
     GtkWidget   *char_filter_btn;
@@ -46,6 +47,9 @@ static void on_folder_selected(GObject *source, GAsyncResult *result, gpointer u
 static void crow_window_prompt_directory(CrowWindow *self);
 static void on_add_mod_clicked(GtkButton *button, gpointer user_data);
 static void on_mod_files_selected(GObject *source, GAsyncResult *result, gpointer user_data);
+static void on_web_btn_clicked(GtkButton *button, gpointer user_data);
+static void on_delete_mod_clicked(GtkButton *button, gpointer user_data);
+static void on_delete_mod_response(GObject *source, GAsyncResult *result, gpointer user_data);
 
 /* ---------- Switch toggle handler ---------- */
 
@@ -99,7 +103,17 @@ static void factory_setup(GtkSignalListItemFactory *factory,
 
     GtkWidget *sw = gtk_switch_new();
     gtk_widget_set_valign(sw, GTK_ALIGN_CENTER);
+    gtk_widget_set_name(sw, "switch");
     gtk_box_append(GTK_BOX(box), sw);
+
+    GtkWidget *del_btn = gtk_button_new_from_icon_name("user-trash-symbolic");
+    gtk_widget_add_css_class(del_btn, "destructive-action");
+    gtk_widget_add_css_class(del_btn, "flat");
+    gtk_widget_set_valign(del_btn, GTK_ALIGN_CENTER);
+    gtk_widget_set_margin_start(del_btn, 8);
+    gtk_widget_set_tooltip_text(del_btn, "Delete Mod");
+    gtk_widget_set_name(del_btn, "del_btn");
+    gtk_box_append(GTK_BOX(box), del_btn);
 
     gtk_list_item_set_child(list_item, box);
 }
@@ -107,22 +121,34 @@ static void factory_setup(GtkSignalListItemFactory *factory,
 static void factory_bind(GtkSignalListItemFactory *factory,
                          GtkListItem *list_item, gpointer user_data) {
     (void)factory;
-    (void)user_data;
+    CrowWindow *self = CROW_WINDOW(user_data);
 
     GtkWidget *box = gtk_list_item_get_child(list_item);
-    GtkWidget *vbox = gtk_widget_get_first_child(box);
-    GtkWidget *label = gtk_widget_get_first_child(vbox);
-    GtkWidget *char_label = gtk_widget_get_last_child(vbox);
-    GtkWidget *sw = gtk_widget_get_last_child(box);
+    GtkWidget *name_label = NULL;
+    GtkWidget *char_label = NULL;
+    GtkWidget *sw = NULL;
+    GtkWidget *del_btn = NULL;
+
+    for (GtkWidget *child = gtk_widget_get_first_child(box);
+         child != NULL;
+         child = gtk_widget_get_next_sibling(child)) {
+        const char *cname = gtk_widget_get_name(child);
+        if (g_strcmp0(cname, "vbox") == 0) {
+            name_label = gtk_widget_get_first_child(child);
+            char_label = gtk_widget_get_next_sibling(name_label);
+        } else if (g_strcmp0(cname, "switch") == 0) {
+            sw = child;
+        } else if (g_strcmp0(cname, "del_btn") == 0) {
+            del_btn = child;
+        }
+    }
 
     CrowMod *mod = gtk_list_item_get_item(list_item);
 
-    gtk_label_set_text(GTK_LABEL(label), crow_mod_get_name(mod));
-    
+    gtk_label_set_text(GTK_LABEL(name_label), crow_mod_get_name(mod));
     const gchar *character = crow_mod_get_character(mod);
     gtk_label_set_text(GTK_LABEL(char_label), character ? character : "Unknown");
 
-    /* Block signal before setting initial state to avoid triggering toggle */
     gulong handler_id = g_signal_connect(sw, "notify::active",
                                          G_CALLBACK(on_switch_toggled), mod);
     g_object_set_data(G_OBJECT(sw), "toggle-handler-id",
@@ -131,6 +157,9 @@ static void factory_bind(GtkSignalListItemFactory *factory,
     g_signal_handler_block(sw, handler_id);
     gtk_switch_set_active(GTK_SWITCH(sw), crow_mod_get_enabled(mod));
     g_signal_handler_unblock(sw, handler_id);
+
+    g_object_set_data(G_OBJECT(del_btn), "mod", mod);
+    g_signal_connect(del_btn, "clicked", G_CALLBACK(on_delete_mod_clicked), self);
 }
 
 static void factory_unbind(GtkSignalListItemFactory *factory,
@@ -139,7 +168,15 @@ static void factory_unbind(GtkSignalListItemFactory *factory,
     (void)user_data;
 
     GtkWidget *box = gtk_list_item_get_child(list_item);
-    GtkWidget *sw = gtk_widget_get_last_child(box);
+    GtkWidget *sw = NULL;
+    for (GtkWidget *child = gtk_widget_get_first_child(box);
+         child != NULL;
+         child = gtk_widget_get_next_sibling(child)) {
+        if (g_strcmp0(gtk_widget_get_name(child), "switch") == 0) {
+            sw = child;
+            break;
+        }
+    }
 
     gulong handler_id = GPOINTER_TO_UINT(
         g_object_get_data(G_OBJECT(sw), "toggle-handler-id"));
@@ -248,6 +285,13 @@ static void crow_window_init(CrowWindow *self) {
     gtk_header_bar_pack_start(GTK_HEADER_BAR(self->header_bar), self->add_btn);
     g_signal_connect(self->add_btn, "clicked",
                      G_CALLBACK(on_add_mod_clicked), self);
+
+    /* Web button (left, next to add) */
+    self->web_btn = gtk_button_new_from_icon_name("applications-internet-symbolic");
+    gtk_widget_set_tooltip_text(self->web_btn, "Download Mods from GameBanana");
+    gtk_header_bar_pack_start(GTK_HEADER_BAR(self->header_bar), self->web_btn);
+    g_signal_connect(self->web_btn, "clicked",
+                     G_CALLBACK(on_web_btn_clicked), self);
 
     /* Refresh button (right) */
     self->refresh_btn = gtk_button_new_from_icon_name("view-refresh-symbolic");
@@ -515,6 +559,59 @@ static void on_mod_files_selected(GObject *source, GAsyncResult *result, gpointe
     if (copied_any) {
         crow_window_refresh_mods(self);
     }
+}
+
+static void on_web_btn_clicked(GtkButton *button, gpointer user_data) {
+    (void)button;
+    CrowWindow *self = CROW_WINDOW(user_data);
+    GtkUriLauncher *launcher = gtk_uri_launcher_new("https://gamebanana.com/games/11534");
+    gtk_uri_launcher_launch(launcher, GTK_WINDOW(self), NULL, NULL, NULL);
+    g_object_unref(launcher);
+}
+
+static void on_delete_mod_clicked(GtkButton *button, gpointer user_data) {
+    CrowWindow *self = CROW_WINDOW(user_data);
+    CrowMod *mod = CROW_MOD(g_object_get_data(G_OBJECT(button), "mod"));
+    if (!mod) return;
+
+    gchar *detail = g_strdup_printf("This action cannot be undone. '%s' will be permanently deleted from your disk.", crow_mod_get_name(mod));
+    GtkAlertDialog *dialog = gtk_alert_dialog_new("Delete %s?", crow_mod_get_name(mod));
+    gtk_alert_dialog_set_detail(dialog, detail);
+    
+    const char *buttons[] = {"Cancel", "Delete", NULL};
+    gtk_alert_dialog_set_buttons(dialog, buttons);
+    gtk_alert_dialog_set_cancel_button(dialog, 0);
+    gtk_alert_dialog_set_default_button(dialog, 1);
+    
+    // We add a ref so the mod survives while the async dialog is open
+    g_object_ref(mod);
+    gtk_alert_dialog_choose(dialog, GTK_WINDOW(self), NULL, on_delete_mod_response, mod);
+    
+    g_free(detail);
+    g_object_unref(dialog);
+}
+
+static void on_delete_mod_response(GObject *source, GAsyncResult *result, gpointer user_data) {
+    GtkAlertDialog *dialog = GTK_ALERT_DIALOG(source);
+    CrowMod *mod = CROW_MOD(user_data);
+    
+    GError *error = NULL;
+    int response = gtk_alert_dialog_choose_finish(dialog, result, &error);
+    
+    if (error) {
+        g_error_free(error);
+        g_object_unref(mod);
+        return;
+    }
+    
+    if (response == 1) { // "Delete" button
+        CrowWindow *self = CROW_WINDOW(g_object_get_data(G_OBJECT(mod), "window"));
+        if (crow_mod_delete(mod) && self) {
+            crow_window_refresh_mods(self);
+        }
+    }
+    
+    g_object_unref(mod);
 }
 
 static void on_folder_selected(GObject *source, GAsyncResult *result,

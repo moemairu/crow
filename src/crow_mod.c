@@ -278,3 +278,49 @@ gboolean crow_mod_set_enabled(CrowMod *self, gboolean enabled) {
 
     return TRUE;
 }
+
+gboolean crow_mod_delete(CrowMod *self) {
+    g_return_val_if_fail(CROW_IS_MOD(self), FALSE);
+    gboolean success = TRUE;
+
+    if (self->path) {
+        GFile *file = g_file_new_for_path(self->path);
+        GError *err = NULL;
+        if (!g_file_delete(file, NULL, &err)) {
+            // Ignore error if it just doesn't exist, though it should.
+            g_printerr("crow: Failed to delete %s: %s\n", self->path, err->message);
+            g_error_free(err);
+            success = FALSE;
+        }
+        g_object_unref(file);
+
+        /* Also find and delete the companion .sig file */
+        gchar *sig_path = NULL;
+        if (g_str_has_suffix(self->path, ".pak")) {
+            gchar *base = g_strndup(self->path, strlen(self->path) - 4);
+            sig_path = g_strconcat(base, ".sig", NULL);
+            g_free(base);
+        } else if (g_str_has_suffix(self->path, ".pak.disabled")) {
+            gchar *base = g_strndup(self->path, strlen(self->path) - 13);
+            sig_path = g_strconcat(base, ".sig.disabled", NULL);
+            g_free(base);
+        }
+
+        if (sig_path) {
+            GFile *sig_file = g_file_new_for_path(sig_path);
+            if (g_file_query_exists(sig_file, NULL)) {
+                GError *sig_err = NULL;
+                if (!g_file_delete(sig_file, NULL, &sig_err)) {
+                    g_printerr("crow: Failed to delete companion %s: %s\n", sig_path, sig_err->message);
+                    g_error_free(sig_err);
+                } else {
+                    g_print("crow: Deleted companion %s\n", sig_path);
+                }
+            }
+            g_object_unref(sig_file);
+            g_free(sig_path);
+        }
+    }
+
+    return success;
+}

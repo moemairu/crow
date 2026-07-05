@@ -36,6 +36,13 @@ GListStore *crow_mod_scan_directory(const gchar *ggst_path);
  */
 gboolean crow_mod_set_enabled(CrowMod *self, gboolean enabled);
 
+/**
+ * Delete the mod's file(s) from the disk.
+ * This deletes the primary file (.pak) and the companion (.sig) if it exists.
+ * @return TRUE on success, FALSE on error.
+ */
+gboolean crow_mod_delete(CrowMod *self);
+
 G_END_DECLS
 
 #endif /* CROW_MOD_H */
