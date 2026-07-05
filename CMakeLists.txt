@@ -30,4 +30,5 @@ target_compile_options(crow PRIVATE -Wall -Wextra -Wpedantic)
 # --- Installation ---
 include(GNUInstallDirs)
 install(TARGETS crow DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES res/crow.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES res/com.github.moemairu.crow.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
+install(FILES res/com.github.moemairu.crow.svg DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps)
