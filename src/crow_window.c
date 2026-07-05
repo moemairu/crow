@@ -89,6 +89,7 @@ static void factory_setup(GtkSignalListItemFactory *factory,
 
     GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
     gtk_widget_set_hexpand(vbox, TRUE);
+    gtk_widget_set_name(vbox, "vbox");
     gtk_box_append(GTK_BOX(box), vbox);
 
     GtkWidget *label = gtk_label_new("");
@@ -107,7 +108,6 @@ static void factory_setup(GtkSignalListItemFactory *factory,
     gtk_box_append(GTK_BOX(box), sw);
 
     GtkWidget *del_btn = gtk_button_new_from_icon_name("user-trash-symbolic");
-    gtk_widget_add_css_class(del_btn, "destructive-action");
     gtk_widget_add_css_class(del_btn, "flat");
     gtk_widget_set_valign(del_btn, GTK_ALIGN_CENTER);
     gtk_widget_set_margin_start(del_btn, 8);
