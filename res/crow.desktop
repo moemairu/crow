@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Crow
+Comment=Guilty Gear -Strive- Mod Manager
+Exec=crow
+Icon=applications-games
+Terminal=false
+Type=Application
+Categories=Game;Utility;

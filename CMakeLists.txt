@@ -26,3 +26,8 @@ target_link_libraries(crow PRIVATE PkgConfig::GTK4)
 
 # --- Compiler Warnings ---
 target_compile_options(crow PRIVATE -Wall -Wextra -Wpedantic)
+
+# --- Installation ---
+include(GNUInstallDirs)
+install(TARGETS crow DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES res/crow.desktop DESTINATION ${CMAKE_INSTALL_DATADIR}/applications)
