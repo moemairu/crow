@@ -137,7 +137,8 @@ If you wish to remove Crow from your system:
 
 ```bash
 sudo rm /usr/local/bin/crow
-sudo rm /usr/local/share/applications/crow.desktop
+sudo rm /usr/local/share/applications/com.github.moemairu.crow.desktop
+sudo rm /usr/local/share/icons/hicolor/scalable/apps/com.github.moemairu.crow.svg
 ```
 
 ---
@@ -149,6 +150,7 @@ crow/
 ├── CMakeLists.txt            # 🔧 CMake build config (C17 + GTK4)
 ├── README.md                 # 📖 You are here! 👋
 ├── .gitignore
+├── res/                      # 🖼️ Icons and desktop entries
 ├── include/
 │   ├── config.h              # ⚙️ XDG config load/save
 │   ├── crow_mod.h            # 🎯 Mod data model, scanner, toggle
@@ -186,6 +188,7 @@ crow/
 - [x] ~~Mod search & status filter~~ ✅
 - [x] ~~Native character auto-detection (`.pak` parser)~~ ✅
 - [x] ~~Drag-and-drop mod installation~~ ✅
+- [x] ~~GameBanana quick access & Safe mod uninstallation~~ ✅
 - [ ] Load order management
 - [ ] Mod profiles (presets)
 
