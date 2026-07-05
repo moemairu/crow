@@ -45,6 +45,13 @@ Point it at your GGST install, and it gives you a clean list of switches to flip
 
 ## ⚡ Quick Start
 
+**Arch Linux (using PKGBUILD)**
+```bash
+git clone https://github.com/moemairu/crow.git
+cd crow && makepkg -si
+```
+
+**Other Linux Distributions**
 ```bash
 # Clone & build
 git clone https://github.com/moemairu/crow.git
@@ -119,8 +126,18 @@ cmake --build build       # Build
 ./build/crow              # Run 🐦‍⬛
 ```
 
-### Install to System
+### Installation Methods
 
+**Option 1: Arch Linux (using PKGBUILD)**
+The easiest way to install and keep Crow updated on Arch-based systems:
+```bash
+git clone https://github.com/moemairu/crow.git
+cd crow
+makepkg -si
+```
+*(To uninstall: `sudo pacman -Rns ggst-crow-git`)*
+
+**Option 2: System-wide Install (All Distros)**
 To install Crow so it appears in your desktop environment's application launcher:
 
 ```bash
@@ -128,13 +145,9 @@ cmake -B build
 cmake --build build
 sudo cmake --install build
 ```
-
 This will place the executable in `/usr/local/bin` and the desktop entry in `/usr/local/share/applications/`.
 
-### Uninstall
-
-If you wish to remove Crow from your system:
-
+*(To uninstall)*:
 ```bash
 sudo rm /usr/local/bin/crow
 sudo rm /usr/local/share/applications/com.github.moemairu.crow.desktop
