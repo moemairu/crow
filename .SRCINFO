@@ -1,0 +1,18 @@
+pkgbase = crow-git
+	pkgdesc = A minimalist, Wayland-native Guilty Gear -Strive- Mod Manager written in C and GTK4.
+	pkgver = r1.deec4f3
+	pkgrel = 1
+	url = https://github.com/moemairu/crow
+	arch = x86_64
+	license = MIT
+	makedepends = git
+	makedepends = cmake
+	makedepends = pkgconf
+	makedepends = gcc
+	depends = gtk4
+	provides = crow
+	conflicts = crow
+	source = git+https://github.com/moemairu/crow.git
+	sha256sums = SKIP
+
+pkgname = crow-git
