@@ -87,7 +87,7 @@ Crow simply renames files between these two states. It also proactively hunts fo
 
 ---
 
-## 🔨 Build
+## 🔨 Build & Install
 
 ### Prerequisites
 
@@ -111,12 +111,33 @@ Install them on common Linux distributions:
   sudo dnf install gtk4-devel cmake gcc
   ```
 
-### Compiling Crow
+### Compile & Run Locally
 
 ```bash
 cmake -B build            # Configure
 cmake --build build       # Build
 ./build/crow              # Run 🐦‍⬛
+```
+
+### Install to System
+
+To install Crow so it appears in your desktop environment's application launcher:
+
+```bash
+cmake -B build
+cmake --build build
+sudo cmake --install build
+```
+
+This will place the executable in `/usr/local/bin` and the desktop entry in `/usr/local/share/applications/`.
+
+### Uninstall
+
+If you wish to remove Crow from your system:
+
+```bash
+sudo rm /usr/local/bin/crow
+sudo rm /usr/local/share/applications/crow.desktop
 ```
 
 ---
