@@ -264,13 +264,14 @@ static void crow_window_init(CrowWindow *self) {
     self->header_bar = gtk_header_bar_new();
     gtk_window_set_titlebar(GTK_WINDOW(self), self->header_bar);
 
-    /* Title */
-    GtkWidget *title_label = gtk_label_new("Crow");
-    PangoAttrList *attrs = pango_attr_list_new();
-    pango_attr_list_insert(attrs, pango_attr_weight_new(PANGO_WEIGHT_BOLD));
-    gtk_label_set_attributes(GTK_LABEL(title_label), attrs);
-    pango_attr_list_unref(attrs);
-    gtk_header_bar_set_title_widget(GTK_HEADER_BAR(self->header_bar), title_label);
+    /* Title / Search bar (center) */
+    self->search_entry = gtk_search_entry_new();
+    gtk_search_entry_set_placeholder_text(GTK_SEARCH_ENTRY(self->search_entry), "Crow");
+    gtk_widget_set_tooltip_text(self->search_entry, "Search Mods");
+    gtk_widget_set_size_request(self->search_entry, 350, -1);
+    gtk_header_bar_set_title_widget(GTK_HEADER_BAR(self->header_bar), self->search_entry);
+    g_signal_connect(self->search_entry, "search-changed",
+                     G_CALLBACK(on_search_changed), self);
 
     /* Settings button (left) */
     self->settings_btn = gtk_button_new_from_icon_name("folder-open-symbolic");
@@ -332,13 +333,6 @@ static void crow_window_init(CrowWindow *self) {
     gtk_widget_set_margin_bottom(self->char_filter_box, 12);
     gtk_scrolled_window_set_child(GTK_SCROLLED_WINDOW(scroll), self->char_filter_box);
 
-    /* Search entry (right, before character filter) */
-    self->search_entry = gtk_search_entry_new();
-    gtk_widget_set_tooltip_text(self->search_entry, "Search Mods");
-    gtk_widget_set_size_request(self->search_entry, 200, -1);
-    gtk_header_bar_pack_end(GTK_HEADER_BAR(self->header_bar), self->search_entry);
-    g_signal_connect(self->search_entry, "search-changed",
-                     G_CALLBACK(on_search_changed), self);
 
     /* --- Main content: Stack with list view + empty state --- */
     self->stack = gtk_stack_new();
